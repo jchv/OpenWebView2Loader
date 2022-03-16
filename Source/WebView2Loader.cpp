@@ -738,7 +738,7 @@ int FindInstalledClientDll(WString* clientPath,
     auto* packages = static_cast<PACKAGE_INFO*>(pkgBuf.Data());
     PACKAGE_INFO* package = nullptr;
     for (UINT32 j = 0; j < cPackages; j++) {
-      if (_wcsicmp(packages->packageFamilyName,
+      if (_wcsicmp(packages[j].packageFamilyName,
                    kChannelPackageFamilyName[channel]) == 0) {
         package = &packages[j];
         break;
