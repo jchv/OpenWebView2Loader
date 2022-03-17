@@ -573,15 +573,15 @@ bool UpdateParamsWithOverrides(const wchar_t* env, const wchar_t* key,
 void UpdateWebViewEnvironmentParamsWithOverrideValues(
     WebView2EnvironmentParams* params, WString* outStrings) {
   UpdateParamsWithOverrides(
-      L"browserExecutableFolder", L"WEBVIEW2_BROWSER_EXECUTABLE_FOLDER",
+      L"WEBVIEW2_BROWSER_EXECUTABLE_FOLDER", L"browserExecutableFolder",
       &params->embeddedEdgeSubFolder, &outStrings[0], nullptr, true);
-  UpdateParamsWithOverrides(L"userDataFolder", L"WEBVIEW2_USER_DATA_FOLDER",
+  UpdateParamsWithOverrides(L"WEBVIEW2_USER_DATA_FOLDER", L"userDataFolder",
                             &params->userDataDir, &outStrings[1], nullptr,
                             false);
   const wchar_t* tmpStr = nullptr;
   WString tmpWStr;
   UpdateParamsWithOverrides(
-      L"releaseChannelPreference", L"WEBVIEW2_RELEASE_CHANNEL_PREFERENCE",
+      L"WEBVIEW2_RELEASE_CHANNEL_PREFERENCE", L"releaseChannelPreference",
       &tmpStr, &tmpWStr,
       reinterpret_cast<DWORD*>(&params->releaseChannelPreference), false);
 }
@@ -912,7 +912,9 @@ STDAPI GetAvailableCoreWebView2BrowserVersionString(
     return E_POINTER;
   }
   WString outStrings[3];
+  
   UpdateWebViewEnvironmentParamsWithOverrideValues(&params, outStrings);
+
   WString channelStr;
   WString versionStr;
   WString clientPath;
