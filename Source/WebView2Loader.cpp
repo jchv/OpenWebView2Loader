@@ -3,11 +3,14 @@
 #include <ShObjIdl.h>
 #include <appmodel.h>
 #include <wrl/client.h>
+#ifndef __MINGW32__
 #include <wrl/implements.h>
+#endif
 
+#include <cstring>
 #include <string>
 
-#include "WebView2.h"
+#include "../Include/WebView2.h"
 
 namespace {
 
@@ -103,11 +106,52 @@ struct WebView2EnvironmentParams {
 /// ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler that proxies
 /// another completion handler but implements retry logic.
 /// </summary>
+#ifndef __MINGW32__
 class EnvironmentCreatedRetryHandler
     : public Microsoft::WRL::RuntimeClass<
           Microsoft::WRL::RuntimeClassFlags<Microsoft::WRL::ClassicCom>,
           ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler> {
  public:
+#else
+// This deviates from actual WebView2Loader, but makes it possible to compile under MinGW.
+class EnvironmentCreatedRetryHandler
+    : public ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler {
+  unsigned __int64 volatile m_cRef = 1;
+ public:
+  HRESULT STDMETHODCALLTYPE QueryInterface(REFIID riid, LPVOID *ppvObj) override {
+    constexpr GUID iidIUnknown = {
+      0x00000000,
+      0x0000,
+      0x0000,
+      {0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46}};
+
+    constexpr GUID iidICoreICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler = {
+      0x4e8a3389,
+      0xc9d8,
+      0x4bd2,
+      {0xb6,0xb5,0x12,0x4f,0xee,0x6c,0xc1,0x4d}}; 
+
+    if (!ppvObj) return E_INVALIDARG;
+    *ppvObj = NULL;
+    if (riid == iidIUnknown || riid == iidICoreICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler) {
+      *ppvObj = (LPVOID)this;
+      AddRef();
+      return NOERROR;
+    }
+    return E_NOINTERFACE;
+  }
+  ULONG STDMETHODCALLTYPE AddRef() override {
+    InterlockedIncrement(&m_cRef);
+    return m_cRef;
+  }
+  ULONG STDMETHODCALLTYPE Release() override {
+    ULONG ulRefCount = InterlockedDecrement(&m_cRef);
+    if (m_cRef == 0) {
+      delete this;
+    }
+    return ulRefCount;
+  }
+#endif
   EnvironmentCreatedRetryHandler(
       WebView2EnvironmentParams environmentParams,
       ICoreWebView2CreateCoreWebView2EnvironmentCompletedHandler*
@@ -894,9 +938,15 @@ STDAPI CreateCoreWebView2EnvironmentWithOptions(
   };
   if (!environmentCreatedHandler) return E_POINTER;
   UpdateWebViewEnvironmentParamsWithOverrideValues(&params, outStrings);
+#ifndef __MINGW32__
   auto retryHandler = Microsoft::WRL::Make<EnvironmentCreatedRetryHandler>(
       params, environmentCreatedHandler, 1);
   return TryCreateWebViewEnvironment(params, retryHandler.Get());
+#else
+  auto retryHandler = new EnvironmentCreatedRetryHandler(
+      params, environmentCreatedHandler, 1);
+  return TryCreateWebViewEnvironment(params, environmentCreatedHandler);
+#endif
 }
 
 STDAPI GetAvailableCoreWebView2BrowserVersionString(
